@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720" font-family="Inter, 'Segoe UI', Arial, sans-serif">
+<rect width="1200" height="720" fill="#0A0E15"/>
+<line x1="245.0" y1="90.0" x2="375" y2="90" stroke="#5D6778" stroke-width="2"/>
+<text x="275.0" y="112.0" font-size="20" font-weight="700" fill="#F7893B" text-anchor="middle">1</text>
+<line x1="505.0" y1="90.0" x2="375" y2="90" stroke="#5D6778" stroke-width="2"/>
+<text x="475.0" y="80.0" font-size="20" font-weight="700" fill="#F7893B" text-anchor="middle">N</text>
+<line x1="695.0" y1="90.0" x2="825" y2="90" stroke="#5D6778" stroke-width="2"/>
+<text x="725.0" y="112.0" font-size="20" font-weight="700" fill="#F7893B" text-anchor="middle">1</text>
+<line x1="955.0" y1="90.0" x2="825" y2="90" stroke="#5D6778" stroke-width="2"/>
+<text x="925.0" y="80.0" font-size="20" font-weight="700" fill="#F7893B" text-anchor="middle">N</text>
+<line x1="150.0" y1="120.0" x2="150" y2="305" stroke="#5D6778" stroke-width="2"/>
+<text x="134.0" y="156.0" font-size="20" font-weight="700" fill="#F7893B" text-anchor="middle">1</text>
+<line x1="150.0" y1="490.0" x2="150" y2="305" stroke="#5D6778" stroke-width="2"/>
+<text x="166.0" y="466.0" font-size="20" font-weight="700" fill="#F7893B" text-anchor="middle">N</text>
+<line x1="568.6" y1="120.0" x2="375" y2="305" stroke="#5D6778" stroke-width="2"/>
+<text x="558.0" y="158.3" font-size="20" font-weight="700" fill="#F7893B" text-anchor="middle">1</text>
+<line x1="181.4" y1="490.0" x2="375" y2="305" stroke="#5D6778" stroke-width="2"/>
+<text x="192.0" y="463.7" font-size="20" font-weight="700" fill="#F7893B" text-anchor="middle">N</text>
+<line x1="1018.6" y1="120.0" x2="825" y2="305" stroke="#5D6778" stroke-width="2"/>
+<text x="1008.0" y="158.3" font-size="20" font-weight="700" fill="#F7893B" text-anchor="middle">1</text>
+<line x1="631.4" y1="490.0" x2="825" y2="305" stroke="#5D6778" stroke-width="2"/>
+<text x="642.0" y="463.7" font-size="20" font-weight="700" fill="#F7893B" text-anchor="middle">N</text>
+<line x1="245.0" y1="520.0" x2="505.0" y2="520.0" stroke="#5D6778" stroke-width="2"/>
+<text x="275.0" y="542.0" font-size="20" font-weight="700" fill="#F7893B" text-anchor="middle">N</text>
+<line x1="955.0" y1="520.0" x2="695.0" y2="520.0" stroke="#5D6778" stroke-width="2"/>
+<text x="925.0" y="510.0" font-size="20" font-weight="700" fill="#F7893B" text-anchor="middle">N</text>
+<polygon points="306.2,90 375,50 443.8,90 375,130" fill="#0E1420" stroke="#7C879A" stroke-width="2"/>
+<text x="375" y="88" font-size="15" font-weight="600" fill="#E6EAF2" text-anchor="middle">lota</text>
+<text x="375" y="107" font-size="12.5" font-weight="600" fill="#8B95A7" text-anchor="middle">1:N</text>
+<polygon points="743.6,90 825,50 906.4,90 825,130" fill="#0E1420" stroke="#7C879A" stroke-width="2"/>
+<text x="825" y="88" font-size="15" font-weight="600" fill="#E6EAF2" text-anchor="middle">executa</text>
+<text x="825" y="107" font-size="12.5" font-weight="600" fill="#8B95A7" text-anchor="middle">1:N</text>
+<polygon points="72.8,305 150,265 227.2,305 150,345" fill="#0E1420" stroke="#7C879A" stroke-width="2"/>
+<text x="150" y="303" font-size="15" font-weight="600" fill="#E6EAF2" text-anchor="middle">possui</text>
+<text x="150" y="322" font-size="12.5" font-weight="600" fill="#8B95A7" text-anchor="middle">1:N</text>
+<polygon points="272.6,305 375,265 477.4,305 375,345" fill="#0E1420" stroke="#7C879A" stroke-width="2"/>
+<text x="375" y="303" font-size="15" font-weight="600" fill="#E6EAF2" text-anchor="middle">responde por</text>
+<text x="375" y="322" font-size="12.5" font-weight="600" fill="#8B95A7" text-anchor="middle">1:N</text>
+<polygon points="743.6,305 825,265 906.4,305 825,345" fill="#0E1420" stroke="#7C879A" stroke-width="2"/>
+<text x="825" y="303" font-size="15" font-weight="600" fill="#E6EAF2" text-anchor="middle">detecta</text>
+<text x="825" y="322" font-size="12.5" font-weight="600" fill="#8B95A7" text-anchor="middle">1:N</text>
+<rect x="55.0" y="60.0" width="190" height="60" rx="6" fill="#111A2B" stroke="#5B8CFF" stroke-width="2.5"/>
+<text x="150" y="96" font-size="18" font-weight="700" fill="#E6EAF2" text-anchor="middle">Setor</text>
+<rect x="505.0" y="60.0" width="190" height="60" rx="6" fill="#111A2B" stroke="#5B8CFF" stroke-width="2.5"/>
+<text x="600" y="96" font-size="18" font-weight="700" fill="#E6EAF2" text-anchor="middle">Responsável</text>
+<rect x="955.0" y="60.0" width="190" height="60" rx="6" fill="#111A2B" stroke="#5B8CFF" stroke-width="2.5"/>
+<text x="1050" y="96" font-size="18" font-weight="700" fill="#E6EAF2" text-anchor="middle">Varredura</text>
+<rect x="55.0" y="490.0" width="190" height="60" rx="6" fill="#111A2B" stroke="#5B8CFF" stroke-width="2.5"/>
+<text x="150" y="526" font-size="18" font-weight="700" fill="#E6EAF2" text-anchor="middle">Ativo</text>
+<rect x="505.0" y="490.0" width="190" height="60" rx="6" fill="#111A2B" stroke="#34C38F" stroke-width="2.5"/>
+<polygon points="513.0,520 600,496.0 687.0,520 600,544.0" fill="none" stroke="#34C38F" stroke-width="1.5" opacity=".85"/>
+<text x="600" y="526" font-size="18" font-weight="700" fill="#E6EAF2" text-anchor="middle">Ocorrência</text>
+<rect x="955.0" y="490.0" width="190" height="60" rx="6" fill="#111A2B" stroke="#5B8CFF" stroke-width="2.5"/>
+<text x="1050" y="526" font-size="18" font-weight="700" fill="#E6EAF2" text-anchor="middle">Vulnerabilidade</text>
+<text x="600" y="590" font-size="13" font-weight="600" fill="#34C38F" text-anchor="middle">Ativo N:N Vulnerabilidade, resolvido pela entidade associativa</text>
+<rect x="955" y="624" width="190" height="52" rx="6" fill="none" stroke="#5D6778" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="1050" y="656" font-size="17" font-weight="700" fill="#8B95A7" text-anchor="middle">Auditoria</text>
+<text x="940" y="648" font-size="12" fill="#8B95A7" text-anchor="end">sem relacionamento:</text>
+<text x="940" y="664" font-size="12" fill="#8B95A7" text-anchor="end">preenchida por trigger</text>
+<text x="40" y="640" font-size="12.5" fill="#8B95A7"><tspan font-weight="700" fill="#F7893B">1</tspan> e <tspan font-weight="700" fill="#F7893B">N</tspan> = cardinalidade máxima de cada lado</text>
+<rect x="40" y="654" width="26" height="16" rx="3" fill="#111A2B" stroke="#5B8CFF" stroke-width="2"/><text x="74" y="667" font-size="12.5" fill="#8B95A7">entidade</text>
+<polygon points="160,662 173,653 186,662 173,671" fill="#0E1420" stroke="#7C879A" stroke-width="1.5"/><text x="194" y="667" font-size="12.5" fill="#8B95A7">relacionamento</text>
+<rect x="302" y="654" width="26" height="16" rx="3" fill="#111A2B" stroke="#34C38F" stroke-width="2"/><text x="336" y="667" font-size="12.5" fill="#8B95A7">entidade associativa</text>
+</svg>

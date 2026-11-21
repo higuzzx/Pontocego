@@ -1,0 +1,5 @@
+# ambiente Python e banco local (cada um cria o seu)
+.venv/
+.pgdata/
+__pycache__/
+*.pyc
