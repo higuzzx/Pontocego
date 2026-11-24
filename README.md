@@ -25,6 +25,7 @@ gestao-vulnerabilidades/
 ├── app/
 │   ├── app.py                    interface (todas as telas)
 │   ├── db.py                     funções de acesso ao banco
+│   ├── especialista.py           sistema especialista de triagem (regras SSVC, motor e autoteste)
 │   ├── auth.py                   login: hash de senha (PBKDF2) e autenticação
 │   ├── config.py                 dados de conexão (SENHA DO POSTGRES AQUI)
 │   └── assets/                   logo oficial do Ponto Cego (PNG com fundo transparente)
@@ -134,8 +135,84 @@ O dump pode ser rodado de novo no mesmo banco para voltar ao estado inicial (ele
 6. **Ativos > Editar**: mude a criticidade do `srv-academico01` e mostre o score sendo refeito.
 7. **Auditoria**: tudo que foi feito acima aparece registrado, com o antes e depois e o usuário que fez (filtre por **Usuário**).
 8. **Relatórios > Otimização**: rode o EXPLAIN ANALYZE e mostre o índice parcial sendo usado.
+9. **Sistema especialista**: abra a ocorrência `sw-biblioteca01` + `CVE-2014-3566` e clique em **Analisar com o especialista**. Abra o **Por quê?** de uma pergunta, responda, veja o **Como?** e aceite o risco com a justificativa gerada (detalhes na seção abaixo).
 
 Todas as telas têm o botão **"Ver SQL executado"**, que mostra a sentença usada.
+
+---
+
+## Sistema especialista: triagem e priorização de vulnerabilidades
+
+Responde à pergunta: **"Para esta ocorrência, o que fazer e com que urgência?"** Usa o mesmo banco e a mesma interface do Ponto Cego. O botão **Analisar com o especialista** fica na ficha de toda ocorrência pendente: na janela que abre ao clicar numa ocorrência e em **Ocorrências > Atualizar ou fechar**.
+
+**Base teórica:** SSVC (*Stakeholder-Specific Vulnerability Categorization*) da CISA, a árvore de decisão que analistas usam para priorizar vulnerabilidades. Ela combina 4 pontos de decisão (exploração, automatizável, impacto técnico e impacto na missão e bem-estar) e chega a uma de 4 decisões: **Track**, **Track\***, **Attend** ou **Act**. As 36 folhas da árvore viraram as regras S01 a S36, conferidas com a tabela oficial da CISA publicada pelo CERT/CC (`cisa_coordinator_2_0_3.csv`). A combinação de prevalência na missão com bem-estar segue a Tabela 8 do guia.
+
+### Componentes
+
+| Componente | Onde fica (`app/especialista.py`) |
+|---|---|
+| Base de fatos (memória de trabalho) | `Motor.fatos`: fatos do banco, respostas do usuário e fatos inferidos |
+| Base de conhecimento | `REGRAS`: 63 regras SE ... ENTÃO ..., cada uma com fator de certeza (FC) de 0 a 1 |
+| Motor de inferência | `Motor`: **encadeamento para trás**. Parte dos objetivos (decisão e ação) e só pergunta o que alguma regra precisa. Como no MYCIN, antes de avaliar uma regra ele a descarta se alguma premissa já conhecida é falsa, para não fazer perguntas inúteis |
+| Incerteza | Fatores de certeza do MYCIN |
+| Explicação | **Por quê?** em cada pergunta e **Como?** no resultado |
+| Interface | `painel_especialista()` em `app/app.py` |
+
+### Fatos
+
+- **Lidos do banco** (consulta `SQL_FATOS_ESPECIALISTA` em `app.py`): CVSS, severidade, criticidade, tipo, sistema operacional, setor, status, dias em aberto, prazo vencido e reincidência (o mesmo CVE já foi corrigido antes no mesmo ativo).
+- **Perguntados ao usuário**: o ativo fica exposto à internet? Há exploit público ou a falha está no catálogo KEV? A exploração pode ser automatizada? Existe patch? O ativo guarda dados pessoais (LGPD)?
+- **Perguntados só se as regras não resolvem**: o impacto técnico é perguntado só quando o CVSS fica entre 7,0 e 8,9 (com 9 ou mais, a regra I01 conclui Total; abaixo de 7, a I02 conclui Parcial). Os dados pessoais não são perguntados nos setores Financeiro, Recursos Humanos e Secretaria Acadêmica (regra I06), nem quando nenhuma regra precisa deles.
+- **"Não sei"**: o sistema assume o pior caso plausível com FC 0,5, e a certeza do resultado cai.
+
+### Regras
+
+| Grupo | O que fazem |
+|---|---|
+| I01 a I13 (inferência) | Impacto técnico pelo CVSS, prevalência na missão pela criticidade, dados pessoais pelo setor, bem-estar pela LGPD, Tabela 8 da CISA, SO fora de suporte |
+| S01 a S36 (árvore SSVC) | `SE exploração E automatizável E impacto técnico E impacto na missão ENTÃO decisão SSVC` |
+| D01 a D03 (decisão) | **D01**: exploit ativo + exposto à internet + criticidade ≥ 4 → Act (FC 0,95). **D02**: reincidente → um nível acima da decisão SSVC (FC 0,9). **D03**: senão, vale a decisão da árvore |
+| A01 a A11 (ações) | Aplicar o patch; **A02**: sem patch em servidor → controle compensatório (segmentação ou WAF, FC 0,8); restringir o acesso externo; procurar sinais de invasão; **A06**: reincidente → revisar o processo de patch; avisar o DPO (LGPD); trocar o SO sem suporte; escalar prazo vencido; **A11**: severidade Baixa + não exposto + criticidade ≤ 2 → aceitar o risco e monitorar (FC 0,7) |
+
+A lista completa, com a justificativa de cada regra, aparece na tela em **Base de conhecimento**.
+
+### Fatores de certeza
+
+- Premissas ligadas por E: vale o **menor** FC.
+- Conclusão: FC da regra × FC das premissas. Ex.: A11 (0,7) × decisão Track inferida com 0,8 = **0,56**.
+- Duas regras com a mesma conclusão: FC1 + FC2 × (1 − FC1).
+- Abaixo de 0,2 o fato conta como desconhecido.
+- **Resolução de conflito**: quando regras concluem decisões diferentes, prevalece a mais urgente (princípio da precaução). Ex.: a árvore dá Attend, mas a falha é reincidente, então D02 sobe para Act.
+
+### O que ele entrega
+
+- **Decisão SSVC** e **grau de certeza**.
+- **Prazo sugerido**: Act, até 2 dias; Attend, metade do prazo padrão da severidade; Track e Track\*, o prazo que a trigger já calculou (se já venceu, replaneja para 30 dias). Nunca passa do prazo do banco enquanto ele não vence.
+- **Ações recomendadas**, cada uma com seu FC.
+- **Como?**: regras disparadas na ordem, com a conta do FC, e a memória de trabalho (cada fato e de onde veio: banco, resposta ou regra).
+- **Por quê?**: a cadeia de regras que levou à pergunta, até o objetivo, com ✓ (premissa confirmada), ✗ (falsa) e ? (ainda não sei).
+- **Risco aceito**: quando a regra A11 recomenda aceitar o risco, aparece a justificativa gerada (dá para editar) e o botão que grava o status **Risco aceito** com ela. A alteração fica na auditoria com o login de quem aceitou.
+
+### Exemplos com os dados de exemplo
+
+| Ocorrência | Respostas | Resultado |
+|---|---|---|
+| `srv-portal01` + CVE-2021-41773 | exploração ativa (KEV), exposto, automatizável, impacto parcial, tem patch, tem dados pessoais | **Act** (D01 e árvore), 100%, prazo de 2 dias; avisar o DPO, restringir o acesso externo, escalar o prazo vencido, trocar o Ubuntu 20.04 |
+| `lab-ccet-02` + CVE-2017-0144 (EternalBlue, reincidente) | exploração ativa, não exposto, automatizável, impacto total, sem dados pessoais, tem patch | A árvore dá **Attend**; a reincidência (D02) sobe para **Act**, 90%; revisar o processo de patch e trocar o Windows 7 |
+| `sw-biblioteca01` + CVE-2014-3566 (POODLE) | PoC pública, não automatizável, sem dados pessoais, tem patch, não exposto | **Track**, 80%, prazo do banco; recomenda aceitar o risco (56%) e libera o botão **Risco aceito** |
+
+### Autoteste
+
+O motor não depende do Streamlit nem do banco. Para conferir as regras do enunciado, a árvore e os prazos:
+```
+python app/especialista.py
+```
+
+### Referências
+
+- CISA. *Stakeholder-Specific Vulnerability Categorization Guide*. Cybersecurity and Infrastructure Security Agency, nov. 2022.
+- CERT/CC. *SSVC: Stakeholder-Specific Vulnerability Categorization*. Tabela `data/csv/cisa/cisa_coordinator_2_0_3.csv`. Disponível em: https://github.com/CERTCC/SSVC.
+- SHORTLIFFE, E. H.; BUCHANAN, B. G. A model of inexact reasoning in medicine. *Mathematical Biosciences*, v. 23, n. 3-4, p. 351-379, 1975.
 
 ---
 

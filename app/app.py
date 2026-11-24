@@ -18,6 +18,7 @@ import streamlit as st
 
 import auth
 import db
+import especialista
 from db import ErroBanco
 
 ASSETS = Path(__file__).parent / "assets"
@@ -228,6 +229,15 @@ section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked)
 .ficha-desc { grid-column: 1 / -1; border-top: 1px solid var(--border); padding-top: 14px; font-size: 13.5px; color: var(--muted); }
 .ficha-desc b { color: var(--accent-2); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 
+/* Sistema especialista */
+.esp-acao { display: flex; gap: 12px; align-items: baseline; padding: 9px 12px; margin: 0 0 6px; font-size: 13.5px;
+  color: var(--text); border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,.02); }
+.esp-acao span { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 600; color: var(--accent-2);
+  min-width: 40px; flex: none; }
+.esp-acao.principal { border-color: rgba(229,9,20,.45); background: rgba(229,9,20,.08); font-weight: 600; }
+.esp-linha { font-size: 13px; color: #C9CDD4; padding: 7px 0; border-bottom: 1px solid var(--border); line-height: 1.5; }
+.esp-linha b { color: var(--accent-2); font-family: 'JetBrains Mono', monospace; font-weight: 600; margin-right: 6px; }
+
 /* Abas */
 .stTabs [data-baseweb="tab-list"] { gap: 6px; border-bottom: 1px solid var(--border); }
 .stTabs [data-baseweb="tab"] { padding: 10px 4px; margin-right: 16px; font-weight: 500; }
@@ -349,6 +359,7 @@ ROTULOS = {
     "usuario_app": "Usuário", "login": "Login", "perfil": "Perfil", "data_cadastro": "Cadastro",
     "ultimo_acesso": "Último acesso",
     "campo": "Campo", "antes": "Antes", "depois": "Depois", "indice": "Índice", "definicao": "Definição",
+    "regra": "Regra", "fc": "FC", "nota": "Justificativa", "fato": "Fato", "valor": "Valor", "origem": "Origem",
 }
 
 
@@ -590,6 +601,97 @@ def pagina_painel():
     ver_sql(SQL_INDICADORES, "Ver SQL dos indicadores")
 
 
+# ---------------------------------------------------------------------
+# SISTEMA ESPECIALISTA de triagem (SSVC): regras e motor em especialista.py
+# ---------------------------------------------------------------------
+SQL_FATOS_ESPECIALISTA = """SELECT o.id_ocorrencia, a.hostname, a.tipo, a.sistema_operacional, a.criticidade,
+       s.nome AS setor, v.cve, v.cvss, v.severidade, v.solucao, o.status, o.prazo_correcao,
+       CURRENT_DATE - o.data_deteccao  AS dias_aberto,
+       o.prazo_correcao < CURRENT_DATE AS prazo_vencido,
+       EXISTS (SELECT 1 FROM ocorrencia c
+                WHERE c.id_ativo = o.id_ativo AND c.id_vulnerabilidade = o.id_vulnerabilidade
+                  AND c.status = 'Corrigida' AND c.id_ocorrencia <> o.id_ocorrencia) AS reincidente
+  FROM ocorrencia o
+  JOIN ativo a           ON a.id_ativo = o.id_ativo
+  JOIN setor s           ON s.id_setor = a.id_setor
+  JOIN vulnerabilidade v ON v.id_vulnerabilidade = o.id_vulnerabilidade
+ WHERE o.id_ocorrencia = %s"""
+
+COR_DECISAO = {"Track": "#22C55E", "Track*": "#FBBF24", "Attend": "#F97316", "Act": "#E50914"}
+
+
+def _responder(chave, fato):
+    """Guarda a opção marcada como resposta. 'Não sei' vira o valor assumido, com FC menor."""
+    p = especialista.PERGUNTAS[fato]
+    i = st.session_state[f"{chave}_{fato}"]
+    st.session_state[chave][fato] = ((p.opcoes[i][1], 1.0) if i < len(p.opcoes)
+                                     else (p.nao_sei, especialista.FC_NAO_SEI))
+
+
+def painel_especialista(id_oc, chave):
+    """Pergunta o que o banco não sabe e diz o que fazer e com que urgência.
+    Devolve a justificativa quando o analista aceita o risco recomendado."""
+    oc = db.consultar(SQL_FATOS_ESPECIALISTA, (id_oc,)).iloc[0].to_dict()
+    ctx = especialista.contexto(oc)
+    respostas = st.session_state[chave]
+    m = especialista.analisar(oc, respostas)
+    aceitar = None
+    if m.pendente:
+        p = especialista.PERGUNTAS[m.pendente]
+        rotulos = [r for r, _ in p.opcoes] + [f"Não sei (o sistema assume {p.nao_sei}, com certeza menor)"]
+        secao(f"Pergunta {len(respostas) + 1}: {p.texto.format_map(ctx)}", p.ajuda.format_map(ctx))
+        escolha = st.radio("Resposta", list(range(len(rotulos))), format_func=rotulos.__getitem__, index=None,
+                           key=f"{chave}_{m.pendente}", label_visibility="collapsed")
+        st.button("Responder", type="primary", icon=":material/send:", disabled=escolha is None,
+                  key=f"{chave}_responder", on_click=_responder, args=(chave, m.pendente))
+        with st.expander("Por quê? (por que estou perguntando isso)", icon=":material/help:"):
+            st.caption("✓ premissa confirmada · ✗ premissa falsa · ? ainda não sei")
+            html("".join(f"<div class='esp-linha'><b>{escape(i)}</b>{escape(t)}</div>"
+                         for i, t in especialista.porque(m, ctx)))
+    else:
+        d, fc = m.valor("decisao")
+        prazo, motivo = especialista.prazo_sugerido(d, oc, date.today())
+        html(f"""
+        <div class='ficha'>
+          <div><div class='k'>Decisão SSVC</div><div class='v'>{badge(d, COR_DECISAO[d])}</div></div>
+          <div><div class='k'>Grau de certeza</div><div class='v mono'>{fc:.0%}</div></div>
+          <div><div class='k'>Prazo sugerido</div><div class='v'>{fmt_data(prazo)}</div></div>
+          <div><div class='k'>Perguntas feitas</div><div class='v mono'>{len(respostas)}</div></div>
+          <div class='ficha-desc'><b>{escape(d)}</b> &nbsp; {escape(especialista.SIGNIFICADO[d])}
+            <br>Prazo: {escape(motivo)}</div>
+        </div>""")
+        secao("Ação recomendada", "A primeira é a principal; as outras completam o plano. % = fator de certeza")
+        html("".join(f"<div class='esp-acao{' principal' if n == 0 else ''}'><span>{fc_a:.0%}</span>"
+                     f"{escape(t.format_map(ctx))}</div>" for n, (t, fc_a) in enumerate(m.acoes())))
+        with st.expander("Como? (regras que levaram a esta conclusão)", icon=":material/account_tree:"):
+            conflito = especialista.conflito(m)
+            html((f"<div class='esp-linha'>{escape(conflito)}</div>" if conflito else "") + "".join(
+                f"<div class='esp-linha'><b>{r.id}</b>{escape(especialista.descrever(r, ctx=ctx, valor=v))}"
+                f" · FC {especialista.fc_txt(r.fc)} × {especialista.fc_txt(fp)} = "
+                f"<b>{especialista.fc_txt(fc_r)}</b></div>" for r, v, fp, fc_r in m.disparadas))
+            st.write("")
+            secao("Memória de trabalho", "Fatos que o motor usou e de onde veio cada um")
+            tabela(pd.DataFrame(m.memoria(), columns=["fato", "valor", "fc", "origem"]))
+        if m.aceitar_risco():
+            st.info("O especialista recomenda aceitar o risco. Revise a justificativa: ela vai para a observação "
+                    "da ocorrência e fica na auditoria com o seu login.", icon=":material/gavel:")
+            texto = especialista.justificativa(m, oc)
+            just = st.text_area("Justificativa", texto, height=120, key=f"{chave}_just_{abs(hash(texto))}")
+            if st.button("Aceitar o risco com esta justificativa", type="primary", icon=":material/gavel:",
+                         disabled=not just.strip(), key=f"{chave}_aceitar"):
+                aceitar = just.strip()
+
+    c = st.columns(2)
+    c[0].button("Refazer análise", icon=":material/restart_alt:", width="stretch", disabled=not respostas,
+                key=f"{chave}_refazer", on_click=respostas.clear)
+    c[1].button("Fechar o especialista", icon=":material/close:", width="stretch", key=f"{chave}_fechar",
+                on_click=st.session_state.pop, args=(chave, None))
+    with st.expander(f"Base de conhecimento ({len(especialista.REGRAS)} regras)", icon=":material/menu_book:"):
+        tabela(pd.DataFrame(especialista.base_de_conhecimento(), columns=["id", "regra", "fc", "nota"]), altura=380)
+    ver_sql(SQL_FATOS_ESPECIALISTA, "Ver SQL dos fatos lidos do banco")
+    return aceitar
+
+
 def editor_ocorrencia(id_oc, prefixo):
     """Ficha da ocorrência pendente com as ações: em correção, fechar, aceitar risco, excluir."""
     df = db.consultar("SELECT * FROM vw_ocorrencias_pendentes WHERE id_ocorrencia = %s", (id_oc,))
@@ -611,9 +713,21 @@ def editor_ocorrencia(id_oc, prefixo):
         {('<br>Observação: ' + escape(det.observacao)) if det.observacao else ''}</div>
     </div>""")
 
+    acao = None
+    chave_esp = f"{prefixo}_esp_{id_oc}"  # guarda as respostas dadas ao especialista nesta ocorrência
+    if chave_esp not in st.session_state and st.button(
+            "Analisar com o especialista", icon=":material/psychology:", key=f"{chave_esp}_abrir",
+            help="Sistema especialista (SSVC): faz perguntas e recomenda o que fazer e com que urgência"):
+        st.session_state[chave_esp] = {}
+    if chave_esp in st.session_state:
+        with painel():
+            justificativa = painel_especialista(id_oc, chave_esp)
+        if justificativa:
+            acao = ("UPDATE ocorrencia SET status = 'Risco aceito', observacao = %s "
+                    "WHERE id_ocorrencia = %s", (justificativa, id_oc))
+
     obs = st.text_input("Observação (opcional; obrigatória para aceitar o risco)", key=f"{prefixo}_obs_{id_oc}")
     b = st.columns(4)
-    acao = None
     if b[0].button("Marcar em correção", icon=":material/build:", width="stretch",
                    disabled=det.status == "Em correção", key=f"{prefixo}_corr_{id_oc}"):
         acao = ("UPDATE ocorrencia SET status = 'Em correção', "
